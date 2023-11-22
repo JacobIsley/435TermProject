@@ -1,1 +1,0 @@
-spark-submit --class cs435.RatingTimeAnalysis --master spark://charleston.cs.colostate.edu:30335 ~/TermProject/RatingTimeAnalysis-1.0-SNAPSHOT.jar /TermProject/ParsedData/2020January_moves.csv /TermProjectParsedData/fics2020January_game_info.csv /TermProject/Output/RatingAnalysis
