@@ -91,14 +91,10 @@ public class RatingTimeAnalysis {
             return new Tuple2<>(x._1() + " " + x._2._1(), relativeMoveTime);
         }).cache();
 
-        // Profile A1: Average Move Time (Relative to Game Time)
-        JavaPairRDD<String, Double> profileA1 = calculateAverage(moveToGameTimes).mapToPair(
+        // Profile A: Average Move Time (Relative to Game Time)
+        JavaPairRDD<String, Double> profileA = calculateAverage(moveToGameTimes).mapToPair(
                 x -> new Tuple2<>(x._1.split(" ")[2], x._2));
-        profileA1.coalesce(1).saveAsTextFile(outputFile + "_AverageMoveToGameTime");
-
-        // Profile A2: Average Move Time (Relative to Remaining Time) IN PROGRESS
-        //JavaPairRDD<String, Double> profileA2 = calculateAverage(moveToRemainingTimes);
-        //profileA2.coalesce(1).saveAsTextFile(outputFile + "_AverageMoveToRemainingTime");
+        profileA.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AverageMoveTime");
 
         // Profile B: Top 5 Fastest Moves (Relative to Game Time?)
 
