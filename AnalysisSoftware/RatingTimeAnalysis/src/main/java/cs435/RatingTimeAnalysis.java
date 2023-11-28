@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import org.codehaus.janino.Java;
 import scala.*;
 
 public class RatingTimeAnalysis {
@@ -90,6 +91,7 @@ public class RatingTimeAnalysis {
             double relativeMoveTime = x._2._5() / x._2._2();
             return new Tuple2<>(x._1() + " " + x._2._1(), relativeMoveTime);
         }).cache();
+        moveToGameTimes.map(x -> x._1.split(" ")[2] + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AllMoveTimes");
 
         // Profile A: Average Move Time (Relative to Game Time)
         JavaPairRDD<String, Double> profileA = calculateAverage(moveToGameTimes).mapToPair(
@@ -99,6 +101,7 @@ public class RatingTimeAnalysis {
         // Profile B: Top 5 Fastest Moves (Relative to Game Time?)
 
         // Profile C: Top 5 Slowest Moves (Relative to Game Time?)
+
     }
 
     private JavaPairRDD<String, Double> calculateAverage(JavaPairRDD<String, Double> relativeMoveTimes) {
