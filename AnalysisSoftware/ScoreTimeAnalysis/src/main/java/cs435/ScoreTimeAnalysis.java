@@ -8,8 +8,13 @@ import scala.Tuple2;
 import scala.Tuple3;
 import scala.Tuple5;
 
+import com.google.common.collect.Iterables;
+
 import java.lang.Math;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Collections;
 
 public class ScoreTimeAnalysis {
 
@@ -115,8 +120,38 @@ public class ScoreTimeAnalysis {
         profileA.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AllMoveTimes");
 
         // Profile B: Top 5 Fastest Moves (Relative to Game Time)
+        JavaPairRDD<String, Iterable<Tuple2<Double, Double>>> profileB = moveToGameTimes
+        .groupByKey()
+        .filter(x -> {
+            return Iterables.size(x._2()) > 10;
+        })
+        .mapToPair(x -> {
+            List<Tuple2<Double, Double>> moveTimes = new ArrayList<>();
+            for(Tuple2<Double, Double> dingus_jr : x._2){
+                moveTimes.add(dingus_jr);
+            }
+            Collections.sort(moveTimes, (t1, t2) -> Double.compare(t1._1(), t2._1()));
+            List<Tuple2<Double, Double>> top5MoveTimes = moveTimes.subList(0, Math.min(5, moveTimes.size()));
+            return new Tuple2<>(x._1, top5MoveTimes);
+        });
+        profileB.coalesce(1).saveAsTextFile(outputFile + "_FastestMoveTimes");
 
         // Profile C: Top 5 Slowest Moves (Relative to Game Time)
+        JavaPairRDD<String, Iterable<Tuple2<Double, Double>>> profileC = moveToGameTimes
+        .groupByKey()
+        .filter(x -> {
+            return Iterables.size(x._2()) > 10;
+        })
+        .mapToPair(x -> {
+            List<Tuple2<Double, Double>> moveTimes = new ArrayList<>();
+            for(Tuple2<Double, Double> dingus_jr : x._2){
+                moveTimes.add(dingus_jr);
+            }
+            Collections.sort(moveTimes, (t1, t2) -> Double.compare(t1._1(), t2._1()));
+            List<Tuple2<Double, Double>> top5MoveTimes = moveTimes.subList(Math.max(0, moveTimes.size() - 5), moveTimes.size());
+            return new Tuple2<>(x._1, top5MoveTimes);
+        });
+        profileC.coalesce(1).saveAsTextFile(outputFile + "_SlowestMoveTimes");
     }
 
     public static void main(String[] args) {
