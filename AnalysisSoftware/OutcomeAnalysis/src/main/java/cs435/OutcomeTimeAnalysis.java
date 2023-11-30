@@ -94,20 +94,50 @@ public class OutcomeTimeAnalysis {
         Categories: (White Wins = "w1-0", Black Wins = "b1-0", White Loses = "w0-1", Black Loses = "b0-1",
         White Draws = "w1/2-1/2", Black Draws = "b1/2-1/2")
         Written Output to DFS (For Plotting Distribution):
-        - For each player: outcome, sum of move times
+        - For each player: outcome, average move time per game
+        - For each player: outcome, sum of move times per game
          */
+
+        // Profile A: Average move time per game
+        JavaPairRDD<String, Double> relativeMoveTimes = playerGameJoin.mapToPair(x -> {
+            String key = x._2._1() + " " + x._1;
+            double relativeMoveTime = x._2._5() / x._2._2();
+            return new Tuple2<>(key, relativeMoveTime);
+        });
+
+        JavaPairRDD<String, Double> averageMoveTimes = calculateAverages(relativeMoveTimes).mapToPair(x ->
+                new Tuple2<>(x._1.split("\\s+")[0], x._2));
+
+        averageMoveTimes.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AverageMoveTimes");
+
+        // Profile B: Sum of move times per game
         JavaPairRDD<String, Tuple5<String, Double, Double, Integer, Double>> moveTimeSums = playerGameJoin.mapToPair(
                 x -> new Tuple2<>(x._1, new Tuple5<>(x._2._1(), x._2._2(), x._2._3(), 1, x._2._5()))
         ).reduceByKey((left, right) ->
                 new Tuple5<>(left._1(), left._2(), left._3(), left._4() + right._4(), left._5() + right._5()));
 
-        JavaPairRDD<String, Double> finalizedResults = moveTimeSums.mapToPair(x -> {
+        JavaPairRDD<String, Double> finalizedSumResults = moveTimeSums.mapToPair(x -> {
             double totalClockTime = x._2._2() + (x._2._3() * x._2._4());
             double normalizedSum = x._2._5() / totalClockTime;
             return new Tuple2<>(x._2._1(), normalizedSum);
         });
 
-        finalizedResults.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_SumMoveTimes");
+        finalizedSumResults.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_SumMoveTimes");
+    }
+
+    private JavaPairRDD<String, Double> calculateAverages(JavaPairRDD<String, Double> moveTimes) {
+        // Aggregate by key to acquire sum and count, mapValue to calculate average
+        return moveTimes.aggregateByKey(
+                new Tuple2<>(0.0, 0),
+                (accumulator, moveTime) -> {
+                    accumulator = new Tuple2<>(accumulator._1 + moveTime, accumulator._2 + 1);
+                    return accumulator;
+                },
+                (acc1, acc2) -> {
+                    acc1 = new Tuple2<>(acc1._1 + acc2._1, acc1._2 + acc2._2);
+                    return acc1;
+                }
+        ).mapValues(x -> x._1 / x._2);
     }
 
     public static void main(String[] args) {
