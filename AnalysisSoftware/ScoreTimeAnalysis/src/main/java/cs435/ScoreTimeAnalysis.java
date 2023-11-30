@@ -55,7 +55,7 @@ public class ScoreTimeAnalysis {
             } else {
                 centipawnScore = Double.parseDouble(scoreStr);
             }
-            // Invert score for black (OR WE CAN DIFFERENTIATE WHITE AND BLACK PLAYERS)
+            // Invert score for black
             centipawnScore = centipawnScore % 2 == 0 ? -1.0 * centipawnScore : centipawnScore;
             return new Tuple2<>(
                     x.getString(1) + " " + x.getString(2),
@@ -112,18 +112,8 @@ public class ScoreTimeAnalysis {
         JavaPairRDD<Double, Double> profileA = moveToGameTimes.mapToPair(x ->
                 new Tuple2<>(x._2._1, x._2._2)
         );
-
-        // TEMP: Check Max and Min score values
-        /*
-        double maxScore = profileA.reduceByKey(Math::max).values().reduce((Math::max));
-        double minScore = profileA.reduceByKey(Math::min).values().reduce((Math::min));
-        System.out.println(maxScore);
-        System.out.println(minScore);
-         */
-
         profileA.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AllMoveTimes");
 
-        // NOTE: Consider whether we should consider checkmate moves, games with less than 5 or 10 moves per player
         // Profile B: Top 5 Fastest Moves (Relative to Game Time)
 
         // Profile C: Top 5 Slowest Moves (Relative to Game Time)

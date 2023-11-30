@@ -2,6 +2,13 @@ package cs435;
 
 import java.lang.Double;
 import java.util.regex.Pattern;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.stream.Collectors;
+
+import com.google.common.collect.Iterables;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -90,15 +97,54 @@ public class RatingTimeAnalysis {
             double relativeMoveTime = x._2._5() / x._2._2();
             return new Tuple2<>(x._1() + " " + x._2._1(), relativeMoveTime);
         }).cache();
+        moveToGameTimes.map(x -> x._1.split(" ")[2] + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AllMoveTimes");
 
         // Profile A: Average Move Time (Relative to Game Time)
         JavaPairRDD<String, Double> profileA = calculateAverage(moveToGameTimes).mapToPair(
                 x -> new Tuple2<>(x._1.split(" ")[2], x._2));
         profileA.map(x -> x._1 + "," + x._2).coalesce(1).saveAsTextFile(outputFile + "_AverageMoveTime");
 
-        // Profile B: Top 5 Fastest Moves (Relative to Game Time?)
+        /*  Profile B: Top 5 Fastest Moves (Relative to Game Time?)
+            - Key = "Game_id Player"
+            - Value = List of 5 fastest moves, in ascending order
+        */
+        JavaPairRDD<String, Iterable<Double>> profileB = moveToGameTimes
+        //Extract the key to be game_id player    
+        .groupByKey() // Group the keys together to get the list of all moves for a player in a game
+        .filter(x -> {
+            //Filter out any keys that have less than 10 moves
+            return Iterables.size(x._2()) > 10;
+        })
+        .mapToPair(x -> {
+            //Extract the move times, sort, and grab the top 5. Output to tuple
+            List<Double> moveTimes = new ArrayList<>();
+            for(Double dingus : x._2){
+                moveTimes.add(dingus);
+            }
+            moveTimes.sort(Comparator.naturalOrder());
+            List<Double> top5MoveTimes = moveTimes.subList(0, Math.min(5, moveTimes.size()));
+            return new Tuple2<>(x._1, top5MoveTimes);
+        });
+        profileB.coalesce(1).saveAsTextFile(outputFile + "_FastestMoveTimes");
 
         // Profile C: Top 5 Slowest Moves (Relative to Game Time?)
+        // Works the same as the other, but the sorting is reversed. See above comments for code explanation
+        JavaPairRDD<String, Iterable<Double>> profileC = moveToGameTimes
+        .groupByKey()
+        .filter(x -> {
+            return Iterables.size(x._2()) > 10;
+        })
+        .mapToPair(x -> {
+            List<Double> moveTimes = new ArrayList<>();
+            for(Double dingus : x._2){
+                moveTimes.add(dingus);
+            }
+            moveTimes.sort(Comparator.reverseOrder());
+            List<Double> bottom5MoveTimes = moveTimes.subList(0, Math.min(5, moveTimes.size()));
+            return new Tuple2<>(x._1, bottom5MoveTimes);
+        });
+        profileC.coalesce(1).saveAsTextFile(outputFile + "_SlowestMoveTimes");
+
     }
 
     private JavaPairRDD<String, Double> calculateAverage(JavaPairRDD<String, Double> relativeMoveTimes) {
